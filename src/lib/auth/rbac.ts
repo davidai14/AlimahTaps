@@ -8,11 +8,17 @@ export type Module =
   | "inventory"
   | "purchase_orders"
   | "employees"
-  | "dashboard";
+  | "dashboard"
+  | "payroll"
+  | "reservations";
 
 // Spec 4.6 / 5: cashiers can't see payroll or other employees' pay, kitchen
 // only sees KDS, managers see scheduling/attendance/inventory (plus the
-// modules they need to run the floor day to day), owner sees everything.
+// modules they need to run the floor day to day), owner sees everything
+// including payroll — spec's manager line stops at "scheduling/attendance",
+// so payroll *processing* (payslips, net pay, deductions) is owner-only,
+// distinct from the employees directory/schedule/attendance module which
+// both roles use day to day.
 const MODULE_ACCESS: Record<Module, StaffRole[]> = {
   pos: ["owner", "manager", "cashier", "server", "encoder"],
   kds: ["owner", "manager", "kitchen"],
@@ -20,6 +26,8 @@ const MODULE_ACCESS: Record<Module, StaffRole[]> = {
   purchase_orders: ["owner", "manager"],
   employees: ["owner", "manager"],
   dashboard: ["owner", "manager"],
+  payroll: ["owner"],
+  reservations: ["owner", "manager", "cashier", "server"],
 };
 
 // Only these roles may finalize payment or void an order in the POS.

@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { DirectoryTab } from "./DirectoryTab";
 import { ScheduleTab } from "./ScheduleTab";
+import { AttendanceTab } from "./AttendanceTab";
 import type { EmployeeRow } from "@/lib/domain-types";
 
-type Tab = "directory" | "schedule";
+type Tab = "directory" | "schedule" | "attendance";
 
 export function EmployeesClient({
   employees,
@@ -23,6 +24,7 @@ export function EmployeesClient({
           [
             ["directory", "Directory"],
             ["schedule", "Shift Schedule"],
+            ["attendance", "Attendance"],
           ] as [Tab, string][]
         ).map(([value, label]) => (
           <button
@@ -39,6 +41,7 @@ export function EmployeesClient({
 
       {tab === "directory" && <DirectoryTab employees={employees} canSeePayRate={canSeePayRate} />}
       {tab === "schedule" && <ScheduleTab employees={employees.filter((e) => e.is_active)} />}
+      {tab === "attendance" && <AttendanceTab employees={employees} />}
     </div>
   );
 }

@@ -160,3 +160,87 @@ export type ShiftRow = {
   end_time: string;
   notes: string | null;
 };
+
+export type AttendanceRow = {
+  id: string;
+  employee_id: string;
+  shift_id: string | null;
+  clock_in: string | null;
+  clock_out: string | null;
+  is_manual_override: boolean;
+  notes: string | null;
+};
+
+export type PayrollPeriodStatus = "open" | "finalized";
+
+export type PayrollPeriodRow = {
+  id: string;
+  start_date: string;
+  end_date: string;
+  status: PayrollPeriodStatus;
+  created_at: string;
+};
+
+export type PayslipDeductionRow = {
+  id: string;
+  label: string;
+  amount: number;
+};
+
+export type PayslipRow = {
+  id: string;
+  payroll_period_id: string;
+  employee_id: string;
+  regular_hours: number;
+  regular_pay: number;
+  overtime_hours: number;
+  overtime_pay: number;
+  gross_pay: number;
+  total_deductions: number;
+  net_pay: number;
+  notes: string | null;
+  generated_at: string;
+  payslip_deductions: PayslipDeductionRow[];
+  employees?: { full_name: string; role: string; pay_type: string; pay_rate: number } | null;
+};
+
+export type ReservationStatus =
+  | "pending"
+  | "confirmed"
+  | "seated"
+  | "completed"
+  | "no_show"
+  | "cancelled";
+
+export type ReservationRow = {
+  id: string;
+  customer_name: string;
+  contact_number: string;
+  party_size: number;
+  reservation_date: string;
+  reservation_time: string;
+  status: ReservationStatus;
+  table_id: string | null;
+  down_payment_amount: number | null;
+  payment_reference: string | null;
+  payment_screenshot_url: string | null;
+  verified_by: string | null;
+  verified_at: string | null;
+  notified_at: string | null;
+  notes: string | null;
+  created_at: string;
+  restaurant_tables?: { table_number: string } | null;
+};
+
+export type WaitlistStatus = "waiting" | "seated" | "cancelled" | "no_show";
+
+export type WaitlistRow = {
+  id: string;
+  customer_name: string;
+  contact_number: string | null;
+  party_size: number;
+  status: WaitlistStatus;
+  queue_position: number | null;
+  estimated_wait_minutes: number | null;
+  created_at: string;
+};

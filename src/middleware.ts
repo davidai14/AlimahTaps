@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 // on the Edge). The actual role check (which module a role may open) runs
 // in lib/auth/rbac.ts on the server component itself, since that needs a DB
 // round trip that doesn't belong in middleware.
-const PUBLIC_PATHS = ["/login", "/unauthorized"];
+const PUBLIC_PATHS = ["/login", "/unauthorized", "/clock", "/reserve"];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

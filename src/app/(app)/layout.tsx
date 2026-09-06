@@ -10,7 +10,9 @@ const NAV: { href: string; label: string; module: Module }[] = [
   { href: "/kds", label: "Kitchen", module: "kds" },
   { href: "/inventory", label: "Inventory", module: "inventory" },
   { href: "/purchase-orders", label: "Purchase Orders", module: "purchase_orders" },
+  { href: "/reservations", label: "Reservations", module: "reservations" },
   { href: "/employees", label: "Employees", module: "employees" },
+  { href: "/payroll", label: "Payroll", module: "payroll" },
 ];
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
