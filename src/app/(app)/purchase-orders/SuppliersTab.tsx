@@ -3,13 +3,16 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createSupplier } from "./actions";
+import type { SupplierItemRow } from "./data";
 import type { SupplierRow } from "@/lib/domain-types";
 
 export function SuppliersTab({
   suppliers,
+  supplierItems,
   onViewHistory,
 }: {
   suppliers: SupplierRow[];
+  supplierItems: SupplierItemRow[];
   onViewHistory: (supplierId: string) => void;
 }) {
   const [showForm, setShowForm] = useState(false);
@@ -27,21 +30,39 @@ export function SuppliersTab({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {suppliers.map((s) => (
-          <div key={s.id} className="bg-white rounded-2xl shadow p-4">
-            <p className="font-semibold text-neutral-800">{s.name}</p>
-            {s.contact_person && <p className="text-sm text-neutral-500">{s.contact_person}</p>}
-            {s.phone && <p className="text-sm text-neutral-500">{s.phone}</p>}
-            {s.email && <p className="text-sm text-neutral-500">{s.email}</p>}
-            {s.address && <p className="text-xs text-neutral-400 mt-1">{s.address}</p>}
-            <button
-              onClick={() => onViewHistory(s.id)}
-              className="mt-2 text-xs font-medium text-amber-700 underline"
-            >
-              View PO history
-            </button>
-          </div>
-        ))}
+        {suppliers.map((s) => {
+          const items = supplierItems.filter((si) => si.supplier_id === s.id);
+          return (
+            <div key={s.id} className="bg-white rounded-2xl shadow p-4">
+              <p className="font-semibold text-neutral-800">{s.name}</p>
+              {s.contact_person && <p className="text-sm text-neutral-500">{s.contact_person}</p>}
+              {s.phone && <p className="text-sm text-neutral-500">{s.phone}</p>}
+              {s.email && <p className="text-sm text-neutral-500">{s.email}</p>}
+              {s.address && <p className="text-xs text-neutral-400 mt-1">{s.address}</p>}
+              {items.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-neutral-100 space-y-0.5">
+                  <p className="text-xs font-medium text-neutral-500">Items supplied</p>
+                  {items.map((si) => (
+                    <div key={si.id} className="flex justify-between text-xs text-neutral-600">
+                      <span>{si.inventory_items?.name}</span>
+                      <span>
+                        {si.agreed_price != null
+                          ? `₱${si.agreed_price.toFixed(2)} / ${si.inventory_items?.unit}`
+                          : "no agreed price"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={() => onViewHistory(s.id)}
+                className="mt-2 text-xs font-medium text-amber-700 underline"
+              >
+                View PO history
+              </button>
+            </div>
+          );
+        })}
       </div>
 
       {showForm && <SupplierForm onClose={() => setShowForm(false)} />}

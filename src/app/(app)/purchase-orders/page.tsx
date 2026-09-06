@@ -1,11 +1,12 @@
 import { requireModule } from "@/lib/auth/rbac";
-import { getSuppliers, getInventoryItemsLite, getPurchaseOrders } from "./data";
+import { getSuppliers, getSupplierItems, getInventoryItemsLite, getPurchaseOrders } from "./data";
 import { PurchaseOrdersClient } from "./PurchaseOrdersClient";
 
 export default async function PurchaseOrdersPage() {
   await requireModule("purchase_orders");
-  const [suppliers, inventoryItems, purchaseOrders] = await Promise.all([
+  const [suppliers, supplierItems, inventoryItems, purchaseOrders] = await Promise.all([
     getSuppliers(),
+    getSupplierItems(),
     getInventoryItemsLite(),
     getPurchaseOrders(),
   ]);
@@ -13,6 +14,7 @@ export default async function PurchaseOrdersPage() {
   return (
     <PurchaseOrdersClient
       suppliers={suppliers}
+      supplierItems={supplierItems}
       inventoryItems={inventoryItems}
       purchaseOrders={purchaseOrders}
     />

@@ -15,6 +15,25 @@ export async function getSuppliers(): Promise<SupplierRow[]> {
   return data ?? [];
 }
 
+export type SupplierItemRow = {
+  id: string;
+  supplier_id: string;
+  inventory_item_id: string;
+  agreed_price: number | null;
+  inventory_items: { name: string; unit: string } | null;
+};
+
+// Spec 4.4: supplier directory shows "items supplied, agreed pricing".
+export async function getSupplierItems(): Promise<SupplierItemRow[]> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("supplier_items")
+    .select("id, supplier_id, inventory_item_id, agreed_price, inventory_items(name, unit)");
+
+  if (error) throw new Error(error.message);
+  return (data ?? []) as unknown as SupplierItemRow[];
+}
+
 export async function getInventoryItemsLite(): Promise<{ id: string; name: string; unit: string }[]> {
   const admin = createAdminClient();
   const { data, error } = await admin

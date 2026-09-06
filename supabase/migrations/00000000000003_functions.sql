@@ -197,7 +197,7 @@ begin
     reference_type, reason_code, created_by
   ) values (
     v_item.store_id, v_item.id,
-    case when p_quantity_change < 0 then 'waste' else 'adjustment' end,
+    (case when p_quantity_change < 0 then 'waste' else 'adjustment' end)::inventory_txn_type,
     p_quantity_change, v_item.weighted_avg_cost, 'manual', p_reason_code, p_employee_id
   );
 

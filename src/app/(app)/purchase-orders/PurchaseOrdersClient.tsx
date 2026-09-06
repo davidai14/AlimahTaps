@@ -3,16 +3,19 @@
 import { useMemo, useState } from "react";
 import { PurchaseOrdersTab } from "./PurchaseOrdersTab";
 import { SuppliersTab } from "./SuppliersTab";
+import type { SupplierItemRow } from "./data";
 import type { PurchaseOrderRow, SupplierRow } from "@/lib/domain-types";
 
 type Tab = "pos" | "suppliers";
 
 export function PurchaseOrdersClient({
   suppliers,
+  supplierItems,
   inventoryItems,
   purchaseOrders,
 }: {
   suppliers: SupplierRow[];
+  supplierItems: SupplierItemRow[];
   inventoryItems: { id: string; name: string; unit: string }[];
   purchaseOrders: PurchaseOrderRow[];
 }) {
@@ -57,6 +60,7 @@ export function PurchaseOrdersClient({
       {tab === "suppliers" && (
         <SuppliersTab
           suppliers={suppliers}
+          supplierItems={supplierItems}
           onViewHistory={(supplierId) => {
             setSupplierFilter(supplierId);
             setTab("pos");
