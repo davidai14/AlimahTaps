@@ -16,7 +16,10 @@ PostgreSQL/Supabase + Tailwind CSS, per the project spec.
   against a configurable target prep time.
 - **Inventory** — recipe/BOM-driven automatic deduction on order completion,
   weighted-average costing, manual adjustments with required reason codes,
-  low-stock alerts, COGS report by date range/item.
+  low-stock alerts, COGS report by date range/item. Menu items (and which
+  inventory items make up each one) are managed from Inventory → Menu Items
+  by downloading an Excel template, editing it, and re-uploading — see
+  "Bulk menu import" below.
 - **Purchase Orders & Suppliers** — supplier directory (with per-item agreed
   pricing), PO lifecycle (draft → sent → partially received → received /
   cancelled), receiving recalculates weighted-average cost, PO history per
@@ -94,6 +97,34 @@ built in Phase 1) stays the permanent way these are handled, and
 notifications stay a manual "I called them" checkbox rather than an
 automated message.
 
+## POS improvement: bulk menu import (Excel)
+
+Loyverse-style bulk item management: instead of adding menu items one at a
+time, go to **Inventory → Menu Items** and:
+
+1. **Download template** — exports the current menu (categories, items,
+   prices, variants, and each item's recipe/BOM) as an .xlsx with four
+   sheets: **Items**, **Variants**, **Components**, and a read-only
+   **Inventory Items (reference)** sheet listing valid inventory item names
+   to type into Components.
+2. Edit it in Excel/Google Sheets/Numbers — add rows for new items, change
+   prices, add/remove recipe ingredients.
+3. **Upload filled template** — creates new categories/items/variants
+   automatically and updates existing ones, matched by name (case-insensitive).
+
+Two behaviors worth knowing:
+- **Components import replaces, it doesn't merge.** For any item that
+  appears in the Components sheet, the uploaded rows become that item's
+  *entire* recipe — remove a row and re-upload, and that ingredient stops
+  being deducted from inventory on sale.
+- **Nothing is written unless everything validates.** An inventory item
+  name that doesn't match anything in Inventory (typo, or an item that
+  doesn't exist yet), an incompatible unit (e.g. mL against something
+  stocked in kg), or a missing price aborts the *entire* upload with a row-
+  by-row error list — never a partial import with a silently incomplete
+  recipe. Add missing inventory items in Inventory first, then reference
+  them by name.
+
 ## Assumptions confirmed with the owner
 
 Per spec Section 8 (Phase 1): staff pay is a **mix of daily and monthly**
@@ -125,7 +156,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL Editor,
-**in order** (`00000000000001` → `00000000000009`).
+**in order** (`00000000000001` → `00000000000010`).
 
 ### 3. Seed sample data
 

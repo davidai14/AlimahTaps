@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { StockTab } from "./StockTab";
 import { CogsReportTab } from "./CogsReportTab";
+import { MenuItemsTab } from "./MenuItemsTab";
 import type { InventoryItemRow } from "@/lib/domain-types";
+import type { MenuItemFull } from "./menu-data";
 
-type Tab = "stock" | "cogs";
+type Tab = "stock" | "cogs" | "menu";
 
-export function InventoryClient({ items }: { items: InventoryItemRow[] }) {
+export function InventoryClient({ items, menuItems }: { items: InventoryItemRow[]; menuItems: MenuItemFull[] }) {
   const [tab, setTab] = useState<Tab>("stock");
 
   return (
@@ -17,6 +19,7 @@ export function InventoryClient({ items }: { items: InventoryItemRow[] }) {
           [
             ["stock", "Stock & Adjustments"],
             ["cogs", "COGS Report"],
+            ["menu", "Menu Items"],
           ] as [Tab, string][]
         ).map(([value, label]) => (
           <button
@@ -33,6 +36,7 @@ export function InventoryClient({ items }: { items: InventoryItemRow[] }) {
 
       {tab === "stock" && <StockTab items={items} />}
       {tab === "cogs" && <CogsReportTab />}
+      {tab === "menu" && <MenuItemsTab items={menuItems} />}
     </div>
   );
 }
