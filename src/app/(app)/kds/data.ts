@@ -1,6 +1,5 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { DEFAULT_STORE_ID } from "@/lib/constants";
 import type { OrderRow } from "@/lib/domain-types";
 
 const KITCHEN_ORDER_SELECT = `
@@ -13,12 +12,12 @@ const KITCHEN_ORDER_SELECT = `
   payments(id, method, amount, reference_number, screenshot_url, verified_by, verified_at, created_at)
 `;
 
-export async function getKitchenOrders(): Promise<OrderRow[]> {
+export async function getKitchenOrders(storeId: string): Promise<OrderRow[]> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("orders")
     .select(KITCHEN_ORDER_SELECT)
-    .eq("store_id", DEFAULT_STORE_ID)
+    .eq("store_id", storeId)
     .in("status", ["pending", "preparing", "ready"])
     .order("created_at", { ascending: true });
 
@@ -26,12 +25,12 @@ export async function getKitchenOrders(): Promise<OrderRow[]> {
   return (data ?? []) as unknown as OrderRow[];
 }
 
-export async function getTargetPrepTimeMinutes(): Promise<number> {
+export async function getTargetPrepTimeMinutes(storeId: string): Promise<number> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("stores")
     .select("target_prep_time_minutes")
-    .eq("id", DEFAULT_STORE_ID)
+    .eq("id", storeId)
     .single();
   return data?.target_prep_time_minutes ?? 15;
 }

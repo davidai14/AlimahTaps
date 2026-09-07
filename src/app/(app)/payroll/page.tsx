@@ -1,9 +1,11 @@
 import { requireModule } from "@/lib/auth/rbac";
+import { getEffectiveStoreId } from "@/lib/auth/store-scope";
 import { getPayrollPeriods } from "./data";
 import { PayrollClient } from "./PayrollClient";
 
 export default async function PayrollPage() {
-  await requireModule("payroll");
-  const periods = await getPayrollPeriods();
+  const session = await requireModule("payroll");
+  const storeId = await getEffectiveStoreId(session);
+  const periods = await getPayrollPeriods(storeId);
   return <PayrollClient periods={periods} />;
 }

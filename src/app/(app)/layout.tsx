@@ -3,6 +3,9 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { canAccess, type Module } from "@/lib/auth/rbac";
 import { logout } from "@/lib/auth/actions";
+import { getEffectiveStoreId } from "@/lib/auth/store-scope";
+import { getStores } from "./stores/data";
+import { BranchSwitcher } from "./BranchSwitcher";
 
 const NAV: { href: string; label: string; module: Module }[] = [
   { href: "/dashboard", label: "Dashboard", module: "dashboard" },
@@ -11,8 +14,10 @@ const NAV: { href: string; label: string; module: Module }[] = [
   { href: "/inventory", label: "Inventory", module: "inventory" },
   { href: "/purchase-orders", label: "Purchase Orders", module: "purchase_orders" },
   { href: "/reservations", label: "Reservations", module: "reservations" },
+  { href: "/loyalty", label: "Customers", module: "loyalty" },
   { href: "/employees", label: "Employees", module: "employees" },
   { href: "/payroll", label: "Payroll", module: "payroll" },
+  { href: "/stores", label: "Branches", module: "stores" },
 ];
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -20,6 +25,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!session) redirect("/login");
 
   const visibleNav = NAV.filter((item) => canAccess(session.role, item.module));
+  const stores = session.role === "owner" ? await getStores() : [];
+  const activeStoreId = await getEffectiveStoreId(session);
 
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50">
@@ -39,6 +46,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </nav>
         </div>
         <div className="flex items-center gap-3 shrink-0">
+          {session.role === "owner" && stores.length > 1 && (
+            <BranchSwitcher stores={stores} activeStoreId={activeStoreId} />
+          )}
           <span className="text-sm text-neutral-500 hidden sm:inline">
             {session.fullName} · <span className="capitalize">{session.role}</span>
           </span>

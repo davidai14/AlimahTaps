@@ -1,6 +1,6 @@
 # Alimah Restaurant Management System
 
-Phase 1 + Phase 2 (partial) for Alimah, a Filipino tapsihan-style eatery on
+Phase 1 + Phase 2 + Phase 3 for Alimah, a Filipino tapsihan-style eatery on
 Evangelista Street, Bacoor City, Cavite. Next.js (App Router) +
 PostgreSQL/Supabase + Tailwind CSS, per the project spec.
 
@@ -52,7 +52,41 @@ PostgreSQL/Supabase + Tailwind CSS, per the project spec.
 - **Walk-in waitlist** — staff-only queue (Waitlist tab): add a party,
   track position and estimated wait, seat/remove.
 
-**Explicitly not built (owner decision, not a Phase 2 gap):** real
+**Phase 3 (built):**
+- **Branches (multi-store)** — a real store-scoping refactor, not just a
+  schema column left unused: every module (POS, KDS, Inventory, Purchase
+  Orders, Dashboard, Employees, Payroll, Reservations, the public `/clock`
+  and `/reserve` pages) reads and writes only the current branch's data.
+  Non-owner staff are permanently scoped to their own branch — there is no
+  way for a cashier to see another branch's orders. The owner alone can
+  switch which branch they're currently viewing/operating (a header
+  dropdown, "Branches" nav item), which is enforced server-side by role,
+  not by trusting a client-side value. Creating a new branch (Branches
+  page, owner-only) can optionally clone an existing branch's menu
+  categories, menu items/variants, recipes (BOM), and inventory item list
+  as a starting point — stock quantities start at zero, but the cost
+  estimate carries over so COGS reporting has a sane starting point on day
+  one.
+- **Loyalty / CRM** — a customer directory (name + contact number,
+  found-or-created by phone at the POS) with a points-balance ledger and
+  full transaction history. **Disabled by default** and gated so it can
+  never silently invent a peso value: the owner must explicitly turn it on
+  from Loyalty → Settings and set both the earn rate (points per peso
+  spent) and the redemption rate (peso value per point) before the system
+  will allow it to be enabled — turning it on with either rate blank is
+  rejected server-side, not just in the UI. While disabled, every
+  points-earning hook in the order flow is a silent no-op: normal checkout
+  behavior is completely unaffected by an unconfigured or disabled
+  program. Once enabled, the POS lets staff look up a customer by phone,
+  see their points balance, and apply a points redemption (capped at the
+  order's remaining total, subject to the owner-configured minimum
+  redemption) as a discount line at checkout; points are earned
+  automatically when an order is completed/paid, at the owner's configured
+  rate. Manual point adjustments (Loyalty → Customers) are available for
+  corrections, each logged to the transaction history with the amount and
+  who made it.
+
+**Explicitly not built (owner decision, not a gap):** real
 GrabFood/FoodPanda/PayMongo API integrations, and SMS/Messenger
 notification automation. The business has no partner API access to the
 delivery platforms or a payment gateway account, so manual entry (already
@@ -91,7 +125,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL Editor,
-**in order** (`00000000000001` → `00000000000006`).
+**in order** (`00000000000001` → `00000000000009`).
 
 ### 3. Seed sample data
 
@@ -112,7 +146,10 @@ both seed files) was validated end-to-end against a real local Postgres
 instance during development, including the specific bugs a live run
 catches that a read-through can't: an enum cast that only fails inside a
 `CASE` expression, and an ambiguous PostgREST embed on a table with two
-foreign keys to the same target.
+foreign keys to the same target. Phase 3's branch cloning and loyalty
+earn/redeem functions (idempotency, the disabled-program no-op, the
+minimum-redemption and insufficient-balance guards) were exercised the
+same way before shipping.
 
 ### 4. Configure environment variables
 
@@ -168,6 +205,12 @@ Owner/manager: see the output of `scripts/bootstrap-owner-login.mjs`.
 - `/reserve` — customer-facing table reservation form
 - `/clock` — staff time clock (PIN-based clock in/out)
 
+With multiple branches, both pages resolve which branch they belong to via
+a `?store=<store id>` query param — e.g. `/reserve?store=<id>` and
+`/clock?store=<id>`, using the branch's `id` from the Branches page; with
+no param they fall back to the original seeded branch, so existing
+bookmarked single-branch links keep working unchanged after Phase 3.
+
 ## Notes on money-related logic
 
 Per the spec's instruction to never silently invent pricing/discount/tax/
@@ -180,3 +223,11 @@ rate (not actual attendance); actual payroll (Payroll module) computes
 regular pay from real attendance records per employee pay type, with
 overtime pay and all statutory deductions as manually entered, editable
 amounts — never auto-computed from a formula or a government table.
+
+Loyalty points follow the same rule: there is no built-in or default earn/
+redemption rate anywhere in the code. Both rates are `null` until the owner
+sets them, the program cannot be turned on without both being a positive
+number (enforced in the server action, not just the form), and every peso
+value the program ever produces — points earned on an order, or the peso
+discount from a redemption — is a straight multiplication against whatever
+rate the owner entered.

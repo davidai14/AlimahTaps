@@ -1,6 +1,5 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { DEFAULT_STORE_ID } from "@/lib/constants";
 import type {
   MenuCategory,
   MenuItem,
@@ -8,7 +7,7 @@ import type {
   RestaurantTable,
 } from "@/lib/domain-types";
 
-export async function getMenuData(): Promise<{
+export async function getMenuData(storeId: string): Promise<{
   categories: MenuCategory[];
   items: MenuItem[];
 }> {
@@ -19,14 +18,14 @@ export async function getMenuData(): Promise<{
       admin
         .from("menu_categories")
         .select("id, name, sort_order")
-        .eq("store_id", DEFAULT_STORE_ID)
+        .eq("store_id", storeId)
         .order("sort_order"),
       admin
         .from("menu_items")
         .select(
           "id, category_id, name, description, price, image_url, is_active, menu_item_variants(id, name, price_delta)"
         )
-        .eq("store_id", DEFAULT_STORE_ID)
+        .eq("store_id", storeId)
         .eq("is_active", true)
         .order("name"),
     ]);
@@ -40,12 +39,12 @@ export async function getMenuData(): Promise<{
   };
 }
 
-export async function getTables(): Promise<RestaurantTable[]> {
+export async function getTables(storeId: string): Promise<RestaurantTable[]> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("restaurant_tables")
     .select("id, table_number, capacity, status")
-    .eq("store_id", DEFAULT_STORE_ID)
+    .eq("store_id", storeId)
     .order("table_number");
 
   if (error) throw new Error(error.message);
@@ -56,7 +55,9 @@ const ORDER_SELECT = `
   id, channel, external_reference, table_id, customer_name, customer_contact,
   status, subtotal, discount_type, discount_id_number, discount_amount,
   platform_commission, tax_amount, total_amount, void_reason, created_at, updated_at,
+  customer_id, loyalty_points_redeemed, loyalty_discount_amount,
   restaurant_tables(table_number),
+  customers(full_name, loyalty_points_balance),
   order_items(id, menu_item_id, variant_id, quantity, unit_price, notes, status,
     menu_items(name), menu_item_variants(name)),
   payments(id, method, amount, reference_number, screenshot_url, verified_by, verified_at, created_at)
@@ -64,7 +65,7 @@ const ORDER_SELECT = `
 
 // Today's orders not yet fully closed out — what the POS "Active Orders"
 // tab shows. Paid/voided/cancelled orders roll off after today.
-export async function getActiveOrders(): Promise<OrderRow[]> {
+export async function getActiveOrders(storeId: string): Promise<OrderRow[]> {
   const admin = createAdminClient();
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
@@ -72,7 +73,7 @@ export async function getActiveOrders(): Promise<OrderRow[]> {
   const { data, error } = await admin
     .from("orders")
     .select(ORDER_SELECT)
-    .eq("store_id", DEFAULT_STORE_ID)
+    .eq("store_id", storeId)
     .gte("created_at", startOfDay.toISOString())
     .order("created_at", { ascending: false });
 

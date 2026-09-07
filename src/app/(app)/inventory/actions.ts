@@ -3,11 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireModule } from "@/lib/auth/rbac";
+import { getEffectiveStoreId } from "@/lib/auth/store-scope";
 import { getCogsReport } from "./data";
 
 export async function getCogsReportAction(startDate: string, endDate: string) {
-  await requireModule("inventory");
-  return getCogsReport(startDate, endDate);
+  const session = await requireModule("inventory");
+  const storeId = await getEffectiveStoreId(session);
+  return getCogsReport(storeId, startDate, endDate);
 }
 
 const REASON_CODES = ["spoilage", "breakage", "correction", "waste", "other"] as const;

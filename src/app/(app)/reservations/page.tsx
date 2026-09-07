@@ -1,13 +1,15 @@
 import { requireModule } from "@/lib/auth/rbac";
+import { getEffectiveStoreId } from "@/lib/auth/store-scope";
 import { getReservations, getWaitlist, getReservationTables } from "./data";
 import { ReservationsClient } from "./ReservationsClient";
 
 export default async function ReservationsPage() {
-  await requireModule("reservations");
+  const session = await requireModule("reservations");
+  const storeId = await getEffectiveStoreId(session);
   const [reservations, waitlist, tables] = await Promise.all([
-    getReservations(),
-    getWaitlist(),
-    getReservationTables(),
+    getReservations(storeId),
+    getWaitlist(storeId),
+    getReservationTables(storeId),
   ]);
 
   return <ReservationsClient reservations={reservations} waitlist={waitlist} tables={tables} />;

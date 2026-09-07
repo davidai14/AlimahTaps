@@ -1,14 +1,13 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { DEFAULT_STORE_ID } from "@/lib/constants";
 import type { InventoryItemRow } from "@/lib/domain-types";
 
-export async function getInventoryItems(): Promise<InventoryItemRow[]> {
+export async function getInventoryItems(storeId: string): Promise<InventoryItemRow[]> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("inventory_items")
     .select("id, name, unit, current_stock, weighted_avg_cost, reorder_point, updated_at")
-    .eq("store_id", DEFAULT_STORE_ID)
+    .eq("store_id", storeId)
     .order("name");
 
   if (error) throw new Error(error.message);
@@ -20,7 +19,7 @@ export type CogsRow = { inventoryItemId: string; name: string; unit: string; qua
 // COGS = sum of every sale_deduction transaction's cost in the window,
 // i.e. Σ(component quantity × weighted-avg unit cost at time of sale) —
 // exactly the formula in spec 4.3.
-export async function getCogsReport(startDate: string, endDate: string): Promise<{
+export async function getCogsReport(storeId: string, startDate: string, endDate: string): Promise<{
   byItem: CogsRow[];
   totalCost: number;
 }> {
@@ -28,7 +27,7 @@ export async function getCogsReport(startDate: string, endDate: string): Promise
   const { data, error } = await admin
     .from("inventory_transactions")
     .select("inventory_item_id, quantity_change, unit_cost, inventory_items(name, unit)")
-    .eq("store_id", DEFAULT_STORE_ID)
+    .eq("store_id", storeId)
     .eq("type", "sale_deduction")
     .gte("created_at", startDate)
     .lte("created_at", endDate);

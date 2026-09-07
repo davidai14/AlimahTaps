@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireModule } from "@/lib/auth/rbac";
-import { DEFAULT_STORE_ID } from "@/lib/constants";
+import { getEffectiveStoreId } from "@/lib/auth/store-scope";
 import { getPayslipsForPeriod } from "./data";
 
 export async function createPayrollPeriod(
@@ -11,6 +11,7 @@ export async function createPayrollPeriod(
   endDate: string
 ): Promise<{ error?: string; periodId?: string }> {
   const session = await requireModule("payroll");
+  const storeId = await getEffectiveStoreId(session);
   if (!startDate || !endDate || endDate < startDate) {
     return { error: "Enter a valid date range." };
   }
@@ -18,7 +19,7 @@ export async function createPayrollPeriod(
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("payroll_periods")
-    .insert({ store_id: DEFAULT_STORE_ID, start_date: startDate, end_date: endDate, created_by: session.employeeId })
+    .insert({ store_id: storeId, start_date: startDate, end_date: endDate, created_by: session.employeeId })
     .select("id")
     .single();
 
@@ -34,13 +35,15 @@ export async function createPayrollPeriod(
 // regular_hours/regular_pay and recomputed totals, never overtime or
 // deductions the manager already entered.
 export async function generatePayslipsForPeriod(periodId: string): Promise<{ error?: string }> {
-  await requireModule("payroll");
+  const session = await requireModule("payroll");
+  const storeId = await getEffectiveStoreId(session);
   const admin = createAdminClient();
 
   const { data: period, error: periodError } = await admin
     .from("payroll_periods")
     .select("id, start_date, end_date, status")
     .eq("id", periodId)
+    .eq("store_id", storeId)
     .single();
   if (periodError || !period) return { error: "Payroll period not found." };
   if (period.status === "finalized") return { error: "This payroll period is finalized and locked." };
@@ -48,14 +51,14 @@ export async function generatePayslipsForPeriod(periodId: string): Promise<{ err
   const { data: employees, error: empError } = await admin
     .from("employees")
     .select("id, pay_type, pay_rate")
-    .eq("store_id", DEFAULT_STORE_ID)
+    .eq("store_id", storeId)
     .eq("is_active", true);
   if (empError) return { error: empError.message };
 
   const { data: attendance, error: attError } = await admin
     .from("attendance")
     .select("employee_id, clock_in, clock_out")
-    .eq("store_id", DEFAULT_STORE_ID)
+    .eq("store_id", storeId)
     .gte("clock_in", `${period.start_date}T00:00:00`)
     .lte("clock_in", `${period.end_date}T23:59:59`);
   if (attError) return { error: attError.message };
@@ -111,7 +114,7 @@ export async function generatePayslipsForPeriod(periodId: string): Promise<{ err
       await admin.from("payslips").insert({
         payroll_period_id: periodId,
         employee_id: emp.id,
-        store_id: DEFAULT_STORE_ID,
+        store_id: storeId,
         regular_hours: regularHours,
         regular_pay: regularPay,
         gross_pay: regularPay,
@@ -183,9 +186,13 @@ export async function addPayslipDeduction(
 
   await recomputePayslipTotals(payslipId);
 
-  const { data: payslip } = await admin.from("payslips").select("employee_id").eq("id", payslipId).single();
+  const { data: payslip } = await admin
+    .from("payslips")
+    .select("employee_id, store_id")
+    .eq("id", payslipId)
+    .single();
   await admin.from("audit_log").insert({
-    store_id: DEFAULT_STORE_ID,
+    store_id: payslip?.store_id ?? (await getEffectiveStoreId(session)),
     action_type: "payroll_edit",
     entity_type: "payslip",
     entity_id: payslipId,
@@ -213,11 +220,16 @@ export async function finalizePayrollPeriod(periodId: string): Promise<{ error?:
   const session = await requireModule("payroll");
   const admin = createAdminClient();
 
-  const { error } = await admin.from("payroll_periods").update({ status: "finalized" }).eq("id", periodId);
+  const { data: period, error } = await admin
+    .from("payroll_periods")
+    .update({ status: "finalized" })
+    .eq("id", periodId)
+    .select("store_id")
+    .single();
   if (error) return { error: error.message };
 
   await admin.from("audit_log").insert({
-    store_id: DEFAULT_STORE_ID,
+    store_id: period.store_id,
     action_type: "payroll_edit",
     entity_type: "payroll_period",
     entity_id: periodId,

@@ -94,9 +94,13 @@ export type OrderRow = {
   void_reason: string | null;
   created_at: string;
   updated_at: string;
+  customer_id: string | null;
+  loyalty_points_redeemed: number;
+  loyalty_discount_amount: number;
   order_items: OrderItemRow[];
   payments: PaymentRow[];
   restaurant_tables?: { table_number: string } | null;
+  customers?: { full_name: string; loyalty_points_balance: number } | null;
 };
 
 export type InventoryItemRow = {
@@ -242,5 +246,34 @@ export type WaitlistRow = {
   status: WaitlistStatus;
   queue_position: number | null;
   estimated_wait_minutes: number | null;
+  created_at: string;
+};
+
+export type CustomerRow = {
+  id: string;
+  full_name: string;
+  contact_number: string;
+  email: string | null;
+  loyalty_points_balance: number;
+  created_at: string;
+};
+
+export type LoyaltySettingsRow = {
+  store_id: string;
+  enabled: boolean;
+  points_per_peso_spent: number | null;
+  peso_value_per_point: number | null;
+  min_redeem_points: number;
+};
+
+export type LoyaltyTxnType = "earn" | "redeem" | "adjustment";
+
+export type LoyaltyTransactionRow = {
+  id: string;
+  customer_id: string;
+  order_id: string | null;
+  type: LoyaltyTxnType;
+  points: number;
+  notes: string | null;
   created_at: string;
 };

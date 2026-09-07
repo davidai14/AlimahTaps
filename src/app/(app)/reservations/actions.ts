@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireModule } from "@/lib/auth/rbac";
-import { DEFAULT_STORE_ID } from "@/lib/constants";
+import { getEffectiveStoreId } from "@/lib/auth/store-scope";
 import type { ReservationStatus, WaitlistStatus } from "@/lib/domain-types";
 
 export async function verifyReservationPayment(reservationId: string): Promise<{ error?: string }> {
@@ -64,14 +64,15 @@ export async function addWaitlistEntry(input: {
   partySize: number;
   estimatedWaitMinutes: number | null;
 }): Promise<{ error?: string }> {
-  await requireModule("reservations");
+  const session = await requireModule("reservations");
+  const storeId = await getEffectiveStoreId(session);
   if (!input.customerName.trim()) return { error: "Name is required." };
 
   const admin = createAdminClient();
   const { data: existing } = await admin
     .from("waitlist")
     .select("queue_position")
-    .eq("store_id", DEFAULT_STORE_ID)
+    .eq("store_id", storeId)
     .eq("status", "waiting")
     .order("queue_position", { ascending: false })
     .limit(1)
@@ -80,7 +81,7 @@ export async function addWaitlistEntry(input: {
   const nextPosition = (existing?.queue_position ?? 0) + 1;
 
   const { error } = await admin.from("waitlist").insert({
-    store_id: DEFAULT_STORE_ID,
+    store_id: storeId,
     customer_name: input.customerName,
     contact_number: input.contactNumber,
     party_size: input.partySize,

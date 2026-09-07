@@ -1,14 +1,13 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { DEFAULT_STORE_ID } from "@/lib/constants";
 import type { PurchaseOrderRow, SupplierRow } from "@/lib/domain-types";
 
-export async function getSuppliers(): Promise<SupplierRow[]> {
+export async function getSuppliers(storeId: string): Promise<SupplierRow[]> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("suppliers")
     .select("id, name, contact_person, phone, email, address")
-    .eq("store_id", DEFAULT_STORE_ID)
+    .eq("store_id", storeId)
     .order("name");
 
   if (error) throw new Error(error.message);
@@ -24,22 +23,25 @@ export type SupplierItemRow = {
 };
 
 // Spec 4.4: supplier directory shows "items supplied, agreed pricing".
-export async function getSupplierItems(): Promise<SupplierItemRow[]> {
+// supplier_items has no store_id of its own, so scope via an inner join on
+// its parent supplier's store_id.
+export async function getSupplierItems(storeId: string): Promise<SupplierItemRow[]> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("supplier_items")
-    .select("id, supplier_id, inventory_item_id, agreed_price, inventory_items(name, unit)");
+    .select("id, supplier_id, inventory_item_id, agreed_price, inventory_items(name, unit), suppliers!inner(store_id)")
+    .eq("suppliers.store_id", storeId);
 
   if (error) throw new Error(error.message);
   return (data ?? []) as unknown as SupplierItemRow[];
 }
 
-export async function getInventoryItemsLite(): Promise<{ id: string; name: string; unit: string }[]> {
+export async function getInventoryItemsLite(storeId: string): Promise<{ id: string; name: string; unit: string }[]> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("inventory_items")
     .select("id, name, unit")
-    .eq("store_id", DEFAULT_STORE_ID)
+    .eq("store_id", storeId)
     .order("name");
 
   if (error) throw new Error(error.message);
@@ -53,12 +55,12 @@ const PO_SELECT = `
     inventory_items(name, unit))
 `;
 
-export async function getPurchaseOrders(): Promise<PurchaseOrderRow[]> {
+export async function getPurchaseOrders(storeId: string): Promise<PurchaseOrderRow[]> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("purchase_orders")
     .select(PO_SELECT)
-    .eq("store_id", DEFAULT_STORE_ID)
+    .eq("store_id", storeId)
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);

@@ -2,16 +2,15 @@
 
 import bcrypt from "bcryptjs";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { DEFAULT_STORE_ID } from "@/lib/constants";
 
 export type ClockStaff = { id: string; fullName: string; role: string };
 
-export async function listClockStaff(): Promise<ClockStaff[]> {
+export async function listClockStaff(storeId: string): Promise<ClockStaff[]> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("employees")
     .select("id, full_name, role")
-    .eq("store_id", DEFAULT_STORE_ID)
+    .eq("store_id", storeId)
     .eq("is_active", true)
     .not("pin_hash", "is", null)
     .order("full_name");

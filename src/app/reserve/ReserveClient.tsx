@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { submitReservation, uploadReservationScreenshot } from "./actions";
 
-export function ReserveClient() {
+export function ReserveClient({ storeId }: { storeId: string }) {
   const [customerName, setCustomerName] = useState("");
   const [contactNumber, setContactNumber] = useState("");
   const [partySize, setPartySize] = useState("2");
@@ -26,7 +26,7 @@ export function ReserveClient() {
       if (file) {
         const fd = new FormData();
         fd.set("file", file);
-        const res = await uploadReservationScreenshot(fd);
+        const res = await uploadReservationScreenshot(storeId, fd);
         if (res.error) {
           setError(res.error);
           return;
@@ -35,6 +35,7 @@ export function ReserveClient() {
       }
 
       const res = await submitReservation({
+        storeId,
         customerName,
         contactNumber,
         partySize: Number(partySize),

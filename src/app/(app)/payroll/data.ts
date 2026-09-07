@@ -1,14 +1,13 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { DEFAULT_STORE_ID } from "@/lib/constants";
 import type { PayrollPeriodRow, PayslipRow } from "@/lib/domain-types";
 
-export async function getPayrollPeriods(): Promise<PayrollPeriodRow[]> {
+export async function getPayrollPeriods(storeId: string): Promise<PayrollPeriodRow[]> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("payroll_periods")
     .select("id, start_date, end_date, status, created_at")
-    .eq("store_id", DEFAULT_STORE_ID)
+    .eq("store_id", storeId)
     .order("start_date", { ascending: false });
 
   if (error) throw new Error(error.message);

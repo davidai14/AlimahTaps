@@ -5,18 +5,20 @@ import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireModule } from "@/lib/auth/rbac";
-import { DEFAULT_STORE_ID } from "@/lib/constants";
+import { getEffectiveStoreId } from "@/lib/auth/store-scope";
 import type { StaffRole } from "@/lib/auth/session";
 import { getShiftsForRange, getAttendanceForRange } from "./data";
 
 export async function getShiftsForRangeAction(startDate: string, endDate: string) {
-  await requireModule("employees");
-  return getShiftsForRange(startDate, endDate);
+  const session = await requireModule("employees");
+  const storeId = await getEffectiveStoreId(session);
+  return getShiftsForRange(storeId, startDate, endDate);
 }
 
 export async function getAttendanceForRangeAction(startDate: string, endDate: string) {
-  await requireModule("employees");
-  return getAttendanceForRange(startDate, endDate);
+  const session = await requireModule("employees");
+  const storeId = await getEffectiveStoreId(session);
+  return getAttendanceForRange(storeId, startDate, endDate);
 }
 
 // Manager override: add or correct a clock-in/out record for an employee,
@@ -30,6 +32,7 @@ export async function upsertManualAttendance(input: {
   notes: string | null;
 }): Promise<{ error?: string }> {
   const session = await requireModule("employees");
+  const storeId = await getEffectiveStoreId(session);
   if (!input.clockInTime) return { error: "Clock-in time is required." };
 
   const admin = createAdminClient();
@@ -56,7 +59,7 @@ export async function upsertManualAttendance(input: {
       .maybeSingle();
 
     const { error } = await admin.from("attendance").insert({
-      store_id: DEFAULT_STORE_ID,
+      store_id: storeId,
       employee_id: input.employeeId,
       shift_id: shift?.id ?? null,
       clock_in: clockIn,
@@ -68,7 +71,7 @@ export async function upsertManualAttendance(input: {
   }
 
   await admin.from("audit_log").insert({
-    store_id: DEFAULT_STORE_ID,
+    store_id: storeId,
     action_type: "attendance_manual_entry",
     entity_type: "attendance",
     entity_id: input.attendanceId ?? null,
@@ -99,7 +102,8 @@ const AUTH_ROLES: StaffRole[] = ["owner", "manager"];
 export async function createEmployee(
   input: NewEmployeeInput
 ): Promise<{ error?: string; temporaryPassword?: string }> {
-  await requireModule("employees");
+  const session = await requireModule("employees");
+  const storeId = await getEffectiveStoreId(session);
 
   if (!input.fullName.trim()) return { error: "Name is required." };
 
@@ -130,7 +134,7 @@ export async function createEmployee(
   }
 
   const { error } = await admin.from("employees").insert({
-    store_id: DEFAULT_STORE_ID,
+    store_id: storeId,
     full_name: input.fullName,
     role: input.role,
     contact_number: input.contactNumber,
@@ -189,11 +193,12 @@ export async function createShift(input: {
   startTime: string;
   endTime: string;
 }): Promise<{ error?: string }> {
-  await requireModule("employees");
+  const session = await requireModule("employees");
+  const storeId = await getEffectiveStoreId(session);
   const admin = createAdminClient();
 
   const { error } = await admin.from("shifts").insert({
-    store_id: DEFAULT_STORE_ID,
+    store_id: storeId,
     employee_id: input.employeeId,
     shift_date: input.shiftDate,
     start_time: input.startTime,

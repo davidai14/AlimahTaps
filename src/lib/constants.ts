@@ -1,5 +1,9 @@
-// Single-store MVP (spec Section 3): every query is scoped to this store id,
-// which must match the `stores` row created by supabase/seed/seed.sql.
+// The original/primary branch (matches the store row supabase/seed/seed.sql
+// creates). Every authenticated page resolves its actual store from the
+// session (see lib/auth/store-scope.ts) — this constant is only used as the
+// fallback for the two public, unauthenticated pages (/clock, /reserve)
+// when they're opened without a ?store=<id> query param, so old bookmarked
+// links keep working once a second branch exists.
 export const DEFAULT_STORE_ID = process.env.NEXT_PUBLIC_DEFAULT_STORE_ID!;
 
 export const CHANNEL_LABEL: Record<string, string> = {

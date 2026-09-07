@@ -1,9 +1,9 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { DEFAULT_STORE_ID } from "@/lib/constants";
 
 export type NewReservationInput = {
+  storeId: string;
   customerName: string;
   contactNumber: string;
   partySize: number;
@@ -29,7 +29,7 @@ export async function submitReservation(
   const { data, error } = await admin
     .from("reservations")
     .insert({
-      store_id: DEFAULT_STORE_ID,
+      store_id: input.storeId,
       customer_name: input.customerName,
       contact_number: input.contactNumber,
       party_size: input.partySize,
@@ -52,6 +52,7 @@ export async function submitReservation(
 // uploading their GCash/bank transfer proof for a reservation down payment
 // (spec 4.5).
 export async function uploadReservationScreenshot(
+  storeId: string,
   formData: FormData
 ): Promise<{ url?: string; error?: string }> {
   const file = formData.get("file") as File | null;
@@ -60,7 +61,7 @@ export async function uploadReservationScreenshot(
   if (file.size > 10 * 1024 * 1024) return { error: "Image is too large (max 10MB)." };
 
   const admin = createAdminClient();
-  const path = `${DEFAULT_STORE_ID}/reservations/${Date.now()}-${file.name}`;
+  const path = `${storeId}/reservations/${Date.now()}-${file.name}`;
   const { error } = await admin.storage
     .from("payment-screenshots")
     .upload(path, await file.arrayBuffer(), { contentType: file.type });

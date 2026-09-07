@@ -2,8 +2,9 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createOrder, type NewOrderItemInput } from "@/lib/orders/actions";
+import { createOrder, findCustomerByPhone, type NewOrderItemInput } from "@/lib/orders/actions";
 import { CHANNEL_LABEL, PLATFORM_CHANNELS } from "@/lib/constants";
+import type { LoyaltyPosSettings } from "./PosClient";
 import type {
   DiscountType,
   MenuCategory,
@@ -24,15 +25,22 @@ const CHANNELS: OrderChannel[] = [
   "online",
 ];
 
+type LoyaltyLookup =
+  | { status: "idle" }
+  | { status: "found"; id: string; fullName: string; pointsBalance: number }
+  | { status: "not_found" };
+
 export function NewOrderTab({
   categories,
   items,
   tables,
+  loyalty,
   onOrderCreated,
 }: {
   categories: MenuCategory[];
   items: MenuItem[];
   tables: RestaurantTable[];
+  loyalty: LoyaltyPosSettings | null;
   onOrderCreated: () => void;
 }) {
   const router = useRouter();
@@ -48,6 +56,11 @@ export function NewOrderTab({
   const [discountType, setDiscountType] = useState<DiscountType>("none");
   const [discountIdNumber, setDiscountIdNumber] = useState("");
   const [promoAmount, setPromoAmount] = useState("");
+  const [loyaltyPhone, setLoyaltyPhone] = useState("");
+  const [loyaltyLookup, setLoyaltyLookup] = useState<LoyaltyLookup>({ status: "idle" });
+  const [loyaltyNewName, setLoyaltyNewName] = useState("");
+  const [redeemPointsInput, setRedeemPointsInput] = useState("");
+  const [isLookingUp, setIsLookingUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -63,7 +76,25 @@ export function NewOrderTab({
       : discountType === "promo"
         ? Math.min(Math.max(Number(promoAmount) || 0, 0), subtotal)
         : 0;
-  const total = Math.round((subtotal - discountAmount) * 100) / 100;
+  const afterStaffDiscount = Math.round((subtotal - discountAmount) * 100) / 100;
+
+  const redeemPoints = Number(redeemPointsInput) || 0;
+  const loyaltyDiscount =
+    loyalty && loyaltyLookup.status === "found" && redeemPoints > 0
+      ? Math.min(Math.round(redeemPoints * loyalty.pesoValuePerPoint * 100) / 100, afterStaffDiscount)
+      : 0;
+
+  const total = Math.round((afterStaffDiscount - loyaltyDiscount) * 100) / 100;
+
+  function lookupCustomer() {
+    if (!loyaltyPhone.trim()) return;
+    setIsLookingUp(true);
+    setLoyaltyLookup({ status: "idle" });
+    findCustomerByPhone(loyaltyPhone).then((res) => {
+      setIsLookingUp(false);
+      setLoyaltyLookup(res ? { status: "found", ...res } : { status: "not_found" });
+    });
+  }
 
   function addToCart(item: MenuItem, variantId: string | null, variantName: string | null, priceDelta: number) {
     const key = `${item.id}:${variantId ?? "base"}`;
@@ -118,6 +149,10 @@ export function NewOrderTab({
     setDiscountType("none");
     setDiscountIdNumber("");
     setPromoAmount("");
+    setLoyaltyPhone("");
+    setLoyaltyLookup({ status: "idle" });
+    setLoyaltyNewName("");
+    setRedeemPointsInput("");
   }
 
   function submit() {
@@ -137,6 +172,9 @@ export function NewOrderTab({
         discountType,
         discountIdNumber: discountIdNumber || null,
         promoDiscountAmount: Number(promoAmount) || 0,
+        loyaltyCustomerPhone: loyaltyPhone || null,
+        loyaltyCustomerName: loyaltyLookup.status === "not_found" ? loyaltyNewName || null : null,
+        redeemPoints,
         items: cart.map(({ menuItemId, variantId, quantity, unitPrice, notes }) => ({
           menuItemId,
           variantId,
@@ -353,6 +391,58 @@ export function NewOrderTab({
           )}
         </div>
 
+        {loyalty && (
+          <div className="mt-4 pt-3 border-t border-neutral-100">
+            <p className="text-sm font-medium text-neutral-500 mb-1">Loyalty Customer (optional)</p>
+            <div className="flex gap-2">
+              <input
+                placeholder="Customer phone"
+                value={loyaltyPhone}
+                onChange={(e) => {
+                  setLoyaltyPhone(e.target.value);
+                  setLoyaltyLookup({ status: "idle" });
+                }}
+                className="flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              />
+              <button
+                onClick={lookupCustomer}
+                disabled={isLookingUp || !loyaltyPhone.trim()}
+                className="px-3 py-2 rounded-lg bg-neutral-100 text-neutral-700 text-xs font-medium disabled:opacity-40"
+              >
+                {isLookingUp ? "..." : "Look up"}
+              </button>
+            </div>
+            {loyaltyLookup.status === "found" && (
+              <div className="mt-2 text-xs text-neutral-600">
+                <p>
+                  {loyaltyLookup.fullName} — {loyaltyLookup.pointsBalance.toFixed(2)} points available
+                </p>
+                <input
+                  type="number"
+                  min="0"
+                  max={loyaltyLookup.pointsBalance}
+                  step="1"
+                  placeholder={`Redeem points (min ${loyalty.minRedeemPoints})`}
+                  value={redeemPointsInput}
+                  onChange={(e) => setRedeemPointsInput(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                />
+              </div>
+            )}
+            {loyaltyLookup.status === "not_found" && (
+              <div className="mt-2">
+                <p className="text-xs text-neutral-400 mb-1">No customer found — add their name to enroll them:</p>
+                <input
+                  placeholder="Customer name"
+                  value={loyaltyNewName}
+                  onChange={(e) => setLoyaltyNewName(e.target.value)}
+                  className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                />
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="mt-4 space-y-1 text-sm">
           <div className="flex justify-between">
             <span className="text-neutral-500">Subtotal</span>
@@ -362,6 +452,12 @@ export function NewOrderTab({
             <div className="flex justify-between text-red-600">
               <span>Discount</span>
               <span>−₱{discountAmount.toFixed(2)}</span>
+            </div>
+          )}
+          {loyaltyDiscount > 0 && (
+            <div className="flex justify-between text-red-600">
+              <span>Points redeemed ({redeemPoints})</span>
+              <span>−₱{loyaltyDiscount.toFixed(2)}</span>
             </div>
           )}
           <div className="flex justify-between font-semibold text-base">

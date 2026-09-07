@@ -8,18 +8,22 @@ import type { MenuCategory, MenuItem, OrderRow, RestaurantTable } from "@/lib/do
 
 type Tab = "new" | "active" | "report";
 
+export type LoyaltyPosSettings = { pesoValuePerPoint: number; minRedeemPoints: number };
+
 export function PosClient({
   categories,
   items,
   tables,
   initialOrders,
   canTakePayments,
+  loyalty,
 }: {
   categories: MenuCategory[];
   items: MenuItem[];
   tables: RestaurantTable[];
   initialOrders: OrderRow[];
   canTakePayments: boolean;
+  loyalty: LoyaltyPosSettings | null;
 }) {
   const [tab, setTab] = useState<Tab>("new");
 
@@ -50,6 +54,7 @@ export function PosClient({
           categories={categories}
           items={items}
           tables={tables}
+          loyalty={loyalty}
           onOrderCreated={() => setTab("active")}
         />
       )}

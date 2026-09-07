@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireModule } from "@/lib/auth/rbac";
-import { DEFAULT_STORE_ID } from "@/lib/constants";
+import { getEffectiveStoreId } from "@/lib/auth/store-scope";
 import type { PoStatus } from "@/lib/domain-types";
 
 export async function createSupplier(input: {
@@ -13,12 +13,13 @@ export async function createSupplier(input: {
   email: string | null;
   address: string | null;
 }): Promise<{ error?: string }> {
-  await requireModule("purchase_orders");
+  const session = await requireModule("purchase_orders");
+  const storeId = await getEffectiveStoreId(session);
   if (!input.name.trim()) return { error: "Supplier name is required." };
 
   const admin = createAdminClient();
   const { error } = await admin.from("suppliers").insert({
-    store_id: DEFAULT_STORE_ID,
+    store_id: storeId,
     name: input.name,
     contact_person: input.contactPerson,
     phone: input.phone,
@@ -40,6 +41,7 @@ export async function createPurchaseOrder(input: {
   items: NewPoItemInput[];
 }): Promise<{ error?: string; purchaseOrderId?: string }> {
   const session = await requireModule("purchase_orders");
+  const storeId = await getEffectiveStoreId(session);
   if (!input.supplierId) return { error: "Choose a supplier." };
   if (input.items.length === 0) return { error: "Add at least one line item." };
 
@@ -49,7 +51,7 @@ export async function createPurchaseOrder(input: {
   const { data: po, error } = await admin
     .from("purchase_orders")
     .insert({
-      store_id: DEFAULT_STORE_ID,
+      store_id: storeId,
       supplier_id: input.supplierId,
       status: "draft" as PoStatus,
       expected_date: input.expectedDate,

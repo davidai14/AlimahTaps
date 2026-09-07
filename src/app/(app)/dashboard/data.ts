@@ -1,6 +1,5 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { DEFAULT_STORE_ID } from "@/lib/constants";
 
 const VALID_STATUSES = ["pending", "preparing", "ready", "served", "completed", "paid"];
 
@@ -21,7 +20,11 @@ export type DashboardData = {
   supplierSpend: { supplierId: string; name: string; amount: number }[];
 };
 
-export async function getDashboardData(startDate: string, endDate: string): Promise<DashboardData> {
+export async function getDashboardData(
+  storeId: string,
+  startDate: string,
+  endDate: string
+): Promise<DashboardData> {
   const admin = createAdminClient();
 
   const [ordersRes, cogsRes, inventoryRes, poRes, shiftsRes, employeesRes] = await Promise.all([
@@ -30,37 +33,37 @@ export async function getDashboardData(startDate: string, endDate: string): Prom
       .select(
         "id, channel, status, discount_amount, platform_commission, total_amount, payments(method, amount), order_items(menu_item_id, quantity, unit_price, menu_items(name))"
       )
-      .eq("store_id", DEFAULT_STORE_ID)
+      .eq("store_id", storeId)
       .gte("created_at", startDate)
       .lte("created_at", endDate),
     admin
       .from("inventory_transactions")
       .select("quantity_change, unit_cost")
-      .eq("store_id", DEFAULT_STORE_ID)
+      .eq("store_id", storeId)
       .eq("type", "sale_deduction")
       .gte("created_at", startDate)
       .lte("created_at", endDate),
     admin
       .from("inventory_items")
       .select("id, name, unit, current_stock, weighted_avg_cost, reorder_point")
-      .eq("store_id", DEFAULT_STORE_ID),
+      .eq("store_id", storeId),
     admin
       .from("purchase_orders")
       .select("supplier_id, total_cost, status, order_date, suppliers(name)")
-      .eq("store_id", DEFAULT_STORE_ID)
+      .eq("store_id", storeId)
       .neq("status", "cancelled")
       .gte("order_date", startDate.slice(0, 10))
       .lte("order_date", endDate.slice(0, 10)),
     admin
       .from("shifts")
       .select("employee_id, shift_date, start_time, end_time")
-      .eq("store_id", DEFAULT_STORE_ID)
+      .eq("store_id", storeId)
       .gte("shift_date", startDate.slice(0, 10))
       .lte("shift_date", endDate.slice(0, 10)),
     admin
       .from("employees")
       .select("id, pay_type, pay_rate")
-      .eq("store_id", DEFAULT_STORE_ID),
+      .eq("store_id", storeId),
   ]);
 
   if (ordersRes.error) throw new Error(ordersRes.error.message);

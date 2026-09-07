@@ -10,7 +10,9 @@ export type Module =
   | "employees"
   | "dashboard"
   | "payroll"
-  | "reservations";
+  | "reservations"
+  | "stores"
+  | "loyalty";
 
 // Spec 4.6 / 5: cashiers can't see payroll or other employees' pay, kitchen
 // only sees KDS, managers see scheduling/attendance/inventory (plus the
@@ -28,6 +30,8 @@ const MODULE_ACCESS: Record<Module, StaffRole[]> = {
   dashboard: ["owner", "manager"],
   payroll: ["owner"],
   reservations: ["owner", "manager", "cashier", "server"],
+  stores: ["owner"],
+  loyalty: ["owner", "manager"],
 };
 
 // Only these roles may finalize payment or void an order in the POS.
